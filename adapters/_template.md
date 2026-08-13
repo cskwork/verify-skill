@@ -62,7 +62,7 @@ Pick the mode that matches the stack:
 Two things to get right:
 
 - **`VERIFY_TOKEN_TTL` below the real expiry.** A suite that starts fresh and dies on a 401 halfway through produces receipts that look like application failures.
-- **`VERIFY_TOKEN_SUBJECT` set to whatever identifies the caller.** It is part of the cache key. Without it, a token for a teacher gets reused for a student run and every business rule fails for reasons that have nothing to do with the diff.
+- **`VERIFY_TOKEN_SUBJECT` set to whatever identifies the caller.** It is part of the cache key. Without it, a token for an admin gets reused for a member run and every business rule fails for reasons that have nothing to do with the diff.
 
 Never commit a real credential. Point at an environment variable instead:
 

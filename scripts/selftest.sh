@@ -184,6 +184,14 @@ check "opaque token fully redacted" "$opaque" "Authorization: <REDACTED>"
 cookie="$(printf 'Set-Cookie: session=r4bbit; Path=/\n' | vf_redact)"
 check "cookie fully redacted" "$cookie" "Set-Cookie: <REDACTED>"
 
+# The forbidden-host guard must actually refuse the call, not just document it.
+VERIFY_FORBIDDEN_HOSTS='^127\.0\.0\.1$' "$HERE/call.sh" \
+  --name selftest.forbidden-host --method GET --path /api/items \
+  --query 'limit=1' --expect-status 200 >/dev/null 2>&1
+check "forbidden host is refused" "$?" 1
+check "no receipt written for a refused host" \
+  "$([ -f "$VERIFY_RUN_DIR/receipts/04-scenario/selftest.forbidden-host.txt" ] && echo yes || echo no)" no
+
 # Verdicts must be recorded for gate 5 to read back.
 check "verdicts file exists" "$([ -f "$VERIFY_RUN_DIR/verdicts.tsv" ] && echo yes || echo no)" yes
 

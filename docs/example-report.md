@@ -6,15 +6,15 @@ Note what it does *not* do: it does not list files changed, it does not paste re
 
 ---
 
-# verify — exclude self-directed rows from the class status view
+# verify — exclude secondary rows from the group status view
 
 **Verdict: PASS WITH GAPS** — the fix works. Only 1 of the feature's 20 endpoints was checked.
 
 ## Context
 
-The class status view listed one row per content module per session type. Self-directed sessions and guided sessions were both emitted, so a self-directed date appeared on the guided detail screen.
+The group status view listed one row per item per session type. Secondary sessions and primary sessions were both emitted, so a secondary date appeared on the primary detail screen.
 
-The fix removes the cross join that produced both, and keeps guided sessions only.
+The fix removes the cross join that produced both, and keeps primary sessions only.
 
 I compared against the merge base with `origin/main`. The feature's files are not on `main` yet.
 
@@ -32,12 +32,12 @@ The process under test started at 08:56:34 from a jar built at HEAD. A different
 
 ## What I proved
 
-1. The endpoint no longer returns self-directed rows. The response has 6 rows and none of them is self-directed. The database still holds 4 self-directed rows for the same period, so the query filtered them — the result is not empty by accident.
-2. The module that showed the bug is now correct. Module `2755427` returns `NOT_DEPLOYED` with a null session id and a null start date. Before the fix it carried a self-directed session id and a self-directed date.
-3. Guided rows keep their own session id. Module `2755418` returns session `3053600`, which matches the guided row in the database.
+1. The endpoint no longer returns secondary rows. The response has 6 rows and none of them is secondary. The database still holds 4 secondary rows for the same period, so the query filtered them — the result is not empty by accident.
+2. The module that showed the bug is now correct. Module `2755427` returns `NOT_DEPLOYED` with a null session id and a null start date. Before the fix it carried a secondary session id and a secondary date.
+3. Primary rows keep their own session id. Module `2755418` returns session `3053600`, which matches the primary row in the database.
 4. Omitting the optional period parameter falls back to the earliest period. Both request shapes return the same period.
 5. An account with no content returns 200 and an empty list. An empty list is a valid answer here.
-6. A viewer-role token is refused on this endpoint. The role guard is new in this change.
+6. A member-role token is refused on this endpoint. The role guard is new in this change.
 7. An invalid id is refused with the platform's parameter-error code.
 
 ## What I did not verify
@@ -54,8 +54,8 @@ The process under test started at 08:56:34 from a jar built at HEAD. A different
 | note (pre-existing) | `ErrorCode.java` | Parameter and validation errors are declared as one status in the enum and returned as 500 on the wire. An untouched older endpoint behaves the same, so this is platform-wide, not a regression. The caller cannot tell "you sent something wrong" from "we are broken". |
 | note (pre-existing) | the changed query | The completion count is structurally always 0. Progress attaches to child session rows, never the container row the join uses. No dev row can produce a non-zero value. |
 | note (pre-existing) | the changed query | The question count is always null on these rows for the same reason: the page count lives on the child. |
-| note | the changed query | The `'GUIDED'` literal now appears in four places in one statement. Worth extracting to a fragment next time this file is touched. |
-| checked, no issue | the changed query | Removing the self-directed branch from `ORDER BY` is correct. The only other producers of that column are two evaluation categories, so no row falls through to the default. |
+| note | the changed query | The `'PRIMARY'` literal now appears in four places in one statement. Worth extracting to a fragment next time this file is touched. |
+| checked, no issue | the changed query | Removing the secondary branch from `ORDER BY` is correct. The only other producers of that column are two evaluation categories, so no row falls through to the default. |
 
 ## Next
 

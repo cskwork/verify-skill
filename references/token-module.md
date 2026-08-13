@@ -25,7 +25,7 @@ A thirty-variant suite would otherwise log in thirty times. Some auth backends r
 
 The cache lives in `<target>/.verify/.token-cache/`, mode 600, keyed by a hash of the adapter path, the mode, the URL, the query, the body, and `VERIFY_TOKEN_SUBJECT`.
 
-That last one matters. **Put every value that changes the identity into `VERIFY_TOKEN_SUBJECT`.** Without it, switching from a teacher to a student reuses the teacher's cached token. The calls then authenticate and fail every business rule, and the receipts look like an application bug.
+That last one matters. **Put every value that changes the identity into `VERIFY_TOKEN_SUBJECT`.** Without it, switching from an admin to a member reuses the admin's cached token. The calls then authenticate and fail every business rule, and the receipts look like an application bug.
 
 `VERIFY_TOKEN_TTL` should sit below the real expiry. A suite that starts fresh and hits a 401 at variant nineteen produces a receipt file that reads as a broken endpoint.
 

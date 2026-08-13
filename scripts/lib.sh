@@ -115,6 +115,33 @@ vf_load_adapter() {
 }
 
 # --------------------------------------------------------------------------
+# Target guard.
+#
+# Refuses to call a host the adapter marked as forbidden. This exists because
+# the mistake it prevents is not recoverable: one write variant against
+# production is not something a later verdict can undo.
+#
+# VERIFY_FORBIDDEN_HOSTS is an extended-regex of hosts. Set it in the adapter
+# to your production and any other off-limits hostnames.
+# --------------------------------------------------------------------------
+
+vf_guard_target() {
+  local url="${1:-${VERIFY_BASE_URL:-}}"
+  [ -n "${VERIFY_FORBIDDEN_HOSTS:-}" ] || return 0
+  [ -n "$url" ] || return 0
+
+  # Strip scheme, then userinfo, then path and port, leaving the host.
+  local host="${url#*://}"
+  host="${host#*@}"
+  host="${host%%/*}"
+  host="${host%%:*}"
+
+  if printf '%s' "$host" | grep -qE "$VERIFY_FORBIDDEN_HOSTS"; then
+    vf_die "target '$host' matches VERIFY_FORBIDDEN_HOSTS. This skill does not call it. Hand the user the command instead of running it."
+  fi
+}
+
+# --------------------------------------------------------------------------
 # Health. Polls until the service answers or the deadline passes.
 # --------------------------------------------------------------------------
 
@@ -123,6 +150,8 @@ vf_wait_healthy() {
   local url="${VERIFY_BASE_URL:-}${VERIFY_HEALTH_PATH:-}"
   [ -n "${VERIFY_BASE_URL:-}" ] || vf_die "VERIFY_BASE_URL is not set"
   [ -n "${VERIFY_HEALTH_PATH:-}" ] || vf_die "VERIFY_HEALTH_PATH is not set"
+
+  vf_guard_target "$url"
 
   local waited=0 code
   while [ "$waited" -lt "$timeout" ]; do

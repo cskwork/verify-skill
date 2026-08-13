@@ -45,7 +45,7 @@ scripts/selftest.sh
 That runs all five gates against a throwaway server and then checks the harness itself: that the token cached, that a wrong expected status produces a `FAIL`, that a variant with no stated expectation does not pass, and that the credential never reached a receipt.
 
 ```
-self-test: 20/20 checks passed
+self-test: 22/22 checks passed
 ```
 
 Those checks are not decoration. Writing them found three real defects in this harness: an unloaded adapter, a background process holding a pipe open, and a `sed` redaction rule that leaked the tail of an opaque token on BSD `sed`. Each is now a regression check.
@@ -83,7 +83,7 @@ scripts/token.sh --status        # cache state, acquires nothing
 
 Five modes cover most stacks: `static`, `http_get`, `http_post_json`, `http_post_form`, and `command`. The last one is the escape hatch — a browser login script, an OAuth device flow, `aws sts`, a local signing script. Anything that prints a token.
 
-It caches per identity, so a thirty-variant suite costs one login, and switching from a teacher to a student does not silently reuse the teacher's token. Credentials are redacted out of every receipt on the way to disk.
+It caches per identity, so a thirty-variant suite costs one login, and switching from an admin to a member does not silently reuse the admin's token. Credentials are redacted out of every receipt on the way to disk.
 
 Details in [`references/token-module.md`](references/token-module.md).
 
@@ -131,7 +131,7 @@ Verdict first. Then what you proved. Then — the most valuable section — what
 
 ```markdown
 ## What I did not verify
-1. The teacher view. I had no teacher account with a deployed class.
+1. The admin view. I had no admin account that had any data.
 ```
 
 Full rules in [`references/report-style.md`](references/report-style.md).

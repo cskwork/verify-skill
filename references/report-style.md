@@ -59,7 +59,7 @@ The gap is the most valuable line in the report. A reader who trusts a report th
 
 State it plainly:
 
-> I did not verify the teacher view. That needs a teacher account with a deployed class, and I did not have one.
+> I did not verify the admin view. That needs an admin account that has data, and I did not have one.
 
 ## Structure
 
@@ -85,12 +85,12 @@ Written for someone who has not seen the diff.
 
 ## What I proved
 Numbered. Behaviour, not file names. One idea per item.
-1. `GET /path` returns the corrected total for a real class. Before the fix it returned 0.
+1. `GET /path` returns the corrected total for a real account. Before the fix it returned 0.
 2. A request with an unknown id returns 400. It does not return 500.
 
 ## What I did not verify
 Numbered. Say why, and say what would unblock it.
-1. The teacher view. I had no teacher account with a deployed class.
+1. The admin view. I had no admin account that had any data.
 
 ## Findings
 | Severity | File | Finding |

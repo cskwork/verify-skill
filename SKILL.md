@@ -45,6 +45,22 @@ A gate needs a subject. Establish it before running anything.
 
 Present the scope and the planned scenario matrix to the user, then wait. Gate 4 makes live calls and may write data — the user approves the blast radius before it happens, not after.
 
+### The environment ladder
+
+Gate 4 calls a real service, so name the target environment in the plan and hold to this ladder:
+
+| Environment | Reads | Writes |
+|-------------|-------|--------|
+| local, dev | default | allowed, after the user approves the endpoint list |
+| staging, audit, pre-production | only when the user says so | only with per-endpoint approval, in that same instruction |
+| production | never from this skill | never |
+
+Production stays off the ladder. A read there still costs a token in a real session, a rate-limit slot, and an audit-log entry, and one mistyped variant writes. When a change can only be proved in production, stop and hand the user the exact command instead of running it.
+
+Check the target repository's own rules first — many teams write this policy down, and their wording wins over this table.
+
+**"Local" is not automatically safe.** A dev profile usually points at a shared development database, so a local process writes shared data. Confirm where the datasource actually points before any write variant.
+
 ## Gate 1 — Build
 
 Run the adapter's build command. Capture stdout and stderr to `receipts/01-build.log`.
@@ -116,9 +132,13 @@ Read `references/token-module.md` to wire a new stack into it.
 
 ### 4c — Get an account
 
-A token needs a subject that exists. When the adapter's token call needs a user, class, or tenant that is absent, create one before retrying. The adapter names the mechanism and its inputs.
+A token needs a subject that exists. When the adapter's token call needs a user, group, or tenant that is absent, create one before retrying. The adapter names the mechanism and its inputs.
 
 Prefer the fixture the adapter already documents over a hand-built row. A synthesized account that skips a required relation produces a token that authenticates and then fails every business rule, which reads as an application bug.
+
+**One real account per role in scope.** When the change touches endpoints that several roles use, each role needs a real account of that role and a call to its own endpoints. Flipping the role claim on an existing token proves the guard refuses it — it proves nothing about whether that role's endpoints work. Read `references/scenario-design.md` for why this is the easiest gap to miss and still feel finished.
+
+A role with no account available is `BLOCKED` for that role, named in the report.
 
 Record what you created, so it can be cleaned up or reused.
 
@@ -164,6 +184,8 @@ Each of these means a gate did not really run. Go back.
 - A scenario table with no response bodies.
 - A gate marked `PASS` whose receipt file does not exist.
 - One variant per endpoint, all of them `happy`.
+- A role called "verified" when only its `authz` refusal was tested.
+- A gate 4 that ran against production, or against staging with no instruction to.
 - A `200` accepted as proof for a write, with no read-back.
 - Findings phrased as "looks good" or "seems fine".
 - A `BLOCKED` gate summarized as "verified".

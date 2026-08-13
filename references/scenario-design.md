@@ -20,6 +20,30 @@ Three are the floor. Two more are conditional.
 
 For a `boundary` variant, decide the expected status before you fire it. A boundary case that returns 200 when you expected 400 is a finding. A boundary case with no stated expectation proves nothing, because any result looks acceptable after the fact.
 
+## Role coverage
+
+When the change touches an endpoint family that several roles use, each role needs its **own** endpoints called with a **real account of that role**.
+
+The trap is subtle and easy to feel good about. An `authz` variant flips the role claim on the token you already have and confirms the guard refuses it. That proves the guard works. It proves nothing about whether that role's own endpoints work, because you never called them, and the account behind the token is not really that role.
+
+Concretely, on a change touching both an admin view and a member view:
+
+| What you did | What it proves |
+|--------------|----------------|
+| Admin account → admin endpoint | The admin view works. |
+| Admin token with the role claim set to `member` → admin endpoint, refused | The guard works. |
+| — | **Nothing about the member view.** |
+
+The third row is the gap. Closing it needs a real member account and a call to the member endpoints.
+
+So, per role in scope:
+
+1. Find a real account of that role, and confirm it exists in the system of record — not only in the table the endpoint reads. An id that satisfies one join can still be a row nobody provisioned.
+2. Confirm the account has data. A role whose account has no rows returns a valid empty response, and an empty response cannot distinguish "works" from "broken".
+3. Call that role's own endpoints, not the other role's.
+
+When you cannot find a real account for a role, that role is `BLOCKED`, and the report says which role and what account would unblock it. Do not let an `authz` variant stand in for it.
+
 ## Payload sourcing
 
 Take the first rung that works. Say in the report which rung you reached.
@@ -36,7 +60,7 @@ Rung 4 proves the least. A synthesized payload has whatever shape you imagined, 
 Fixtures go on disk and into reports. Before writing:
 
 - Replace real names, emails, phone numbers, and addresses with obvious placeholders.
-- Keep identifiers that the query needs — a UUID, a class code, an order id. Truncating those breaks the test.
+- Keep identifiers that the query needs — a UUID, a group code, an order id. Truncating those breaks the test.
 - Never write a token, password, cookie, or API key into a fixture or a receipt. `scripts/lib.sh` redacts on the way out, but do not rely on it as the only guard.
 
 ## Assertions

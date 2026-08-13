@@ -165,6 +165,7 @@ $VERIFY_TOKEN_EXTRA_HEADERS
 EOF
     fi
 
+    vf_guard_target "$url"
     vf_log "token: $mode $url"
     http_status="$(curl "$@" "$url" 2>/dev/null || echo 000)"
     raw="$(cat "$tmp_body")"

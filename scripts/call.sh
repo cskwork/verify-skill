@@ -82,6 +82,8 @@ esac
   *)    url="$url?$QUERY" ;;
 esac
 
+vf_guard_target "$url"
+
 headers=()
 if [ "$NO_AUTH" -eq 0 ]; then
   token_header="$("$(dirname "${BASH_SOURCE[0]}")/token.sh" --header)" || {
