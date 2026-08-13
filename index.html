@@ -405,7 +405,7 @@ $EDITOR /path/to/repo/.verify/adapter.env</pre>
 const I18N = {
   ko: {
     eyebrow:"Agent Skill · Claude Code · Codex · Cursor",
-    h1a:"초록 빌드", h1b:"는 검증이 아니다",
+    h1a:"초록 빌드는", h1b:"검증이 아니다",
     lede1:"빌드 성공은 <strong>컴파일러가 만족했다는 증거</strong>일 뿐이다. 엔드포인트가 실제 payload를 받는지, 쿼리가 맞는 행을 돌려주는지, 변경이 호출자를 깨뜨리지 않았는지는 증명하지 않는다.",
     lede2:"<code class=\"inl\">verify</code>는 그 간극을 <strong>receipt</strong>로 메운다. 다른 사람이 그대로 재실행해 같은 판정에 도달할 수 있는 파일이다. receipt가 없으면 통과도 없다.",
     cta1:"설치하기", cta2:"GitHub에서 보기",
@@ -583,11 +583,13 @@ document.querySelectorAll(".lang button").forEach(b => {
   b.addEventListener("click", () => setLang(b.dataset.lang));
 });
 
+// Default is ko. A visitor's own choice wins, but navigator.language does not
+// get a vote — it reports en-US in most automation and would silently flip the
+// default the page is specified to have.
 let initial = "ko";
 try {
   const saved = localStorage.getItem("verify-skill-lang");
   if (saved === "ko" || saved === "en") initial = saved;
-  else if (!(navigator.language || "").toLowerCase().startsWith("ko")) initial = "en";
 } catch (e) {}
 setLang(initial);
 </script>
