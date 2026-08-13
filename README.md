@@ -33,7 +33,7 @@ Then say `verify my recent work`, or `/verify`.
 
 Works with any agent harness that reads `SKILL.md` — Claude Code, Codex, Cursor, Gemini CLI, OpenCode.
 
-Needs `curl`, `jq`, and `bash`. Tested on macOS bash 3.2 and Linux.
+Needs `curl`, `jq`, and `bash`. Written for bash 3.2 so it runs on a stock macOS shell, and verified there. Not yet run on Linux — `scripts/selftest.sh` will tell you in about 20 seconds.
 
 ## Try it in 30 seconds
 
