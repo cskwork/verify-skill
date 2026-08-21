@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Verify recent code changes before they ship - build, static checks, clean-code review of the diff, and scenario-based API QA with real tokens, accounts, and payload variants, then a plain-language report. Use when the user asks to verify recent work or 검증, wants proof beyond a green build, needs endpoints exercised with happy/boundary/negative payloads, asks whether a change is safe to merge or deploy, or asks for a verification report.
+description: Verifies recent code changes and leaves receipts - recorded artifacts another person can re-run to reach the same verdict. Use when the user asks to verify recent work or 검증, wants proof beyond a green build, needs endpoints exercised with happy/boundary/negative payloads, asks whether a change is safe to merge or deploy, or asks for a verification report.
 ---
 
 # verify
@@ -38,8 +38,8 @@ A gate needs a subject. Establish it before running anything.
 1. **Find the diff base.** Ask the user if they named a base. Otherwise use the merge-base with the repo's main or release branch. State which base you used and why.
 2. **Inventory the change.** `git diff --stat <base>..HEAD` plus uncommitted work. List every changed file.
 3. **Derive the API target list.** For each changed file, trace up to the HTTP endpoints that reach it. A changed query with no reachable endpoint is a finding in itself — say so.
-4. **Load the adapter.** Read `adapters/<stack>.md` for the build command, run command, token acquisition, account creation, and health URL. No adapter for this stack yet? Write one from `adapters/_template.md` by reading the repo, and save it — the next run reuses it.
-5. **Open the run directory.** `.verify/<YYYYMMDD-HHMM>-<slug>/` in the target repo. All receipts land here.
+4. **Load the adapter.** The adapter is a shell file of `VERIFY_*` assignments — build command, static checks, run command, health URL, token acquisition, account creation. `scripts/lib.sh` resolves `$VERIFY_ADAPTER_FILE`, then `<target-repo>/.verify/adapter.env`, then `adapters/<name>.env` under `VERIFY_ADAPTER=<name>`. No adapter for this stack yet? Copy `adapters/_template.env`, fill it in by reading the repo with `adapters/_template.md` as the field guide and `adapters/spring-mybatis.md` as a worked example, and save it as `<target-repo>/.verify/adapter.env` — the next run finds it on its own.
+5. **Open the run directory.** Export `VERIFY_TARGET_DIR=<target-repo>` before any script runs; it defaults to the current directory, so an agent working from the skill folder writes receipts into the skill. The run is then `.verify/<YYYYMMDD-HHMM>-<slug>/` in the target repo, and all receipts land there.
 
 **Completion criterion:** a written target list where every changed file is either mapped to at least one endpoint or explicitly marked as having none, and an adapter loaded or authored.
 
@@ -55,7 +55,7 @@ Gate 4 calls a real service, so name the target environment in the plan and hold
 | staging, audit, pre-production | only when the user says so | only with per-endpoint approval, in that same instruction |
 | production | never from this skill | never |
 
-Production stays off the ladder. A read there still costs a token in a real session, a rate-limit slot, and an audit-log entry, and one mistyped variant writes. When a change can only be proved in production, stop and hand the user the exact command instead of running it.
+Production stays off the ladder. A read there still costs a token in a real session, a rate-limit slot, and an audit-log entry, and one mistyped variant writes. Set `VERIFY_FORBIDDEN_HOSTS` in the adapter to the production hostnames, and `scripts/lib.sh` refuses them before curl runs. When a change can only be proved in production, stop and hand the user the exact command instead of running it.
 
 Check the target repository's own rules first — many teams write this policy down, and their wording wins over this table.
 
@@ -63,9 +63,9 @@ Check the target repository's own rules first — many teams write this policy d
 
 ## Gate 1 — Build
 
-Run the adapter's build command. Capture stdout and stderr to `receipts/01-build.log`.
+Run `scripts/gate-build.sh --base <base>`. It runs the adapter's build command, captures stdout and stderr to `receipts/01-build.log`, and records the verdict.
 
-Compare against the base commit when the build fails: a build already broken at the base is `BLOCKED` on a pre-existing break, not a `FAIL` on this diff.
+A non-zero exit prints the commands to re-run the same build at the base: a build already broken at the base is `BLOCKED` on a pre-existing break, not a `FAIL` on this diff.
 
 **Completion criterion:** `receipts/01-build.log` exists, and the report quotes the command, the exit code, and the final error line if any. A build claim with no log is not a claim.
 
@@ -73,9 +73,9 @@ Compare against the base commit when the build fails: a build already broken at 
 
 ## Gate 2 — Static
 
-Run the checks the repo already owns: type check, linter, formatter in check mode, schema and config parsers, dependency audit. The adapter lists them. Never invent a tool the repo does not use.
+Run `scripts/gate-static.sh`. It walks the adapter's `VERIFY_STATIC_CMDS` one line at a time, writes each tool's output and exit code to `receipts/02-static.log`, and records a tool it cannot execute as `BLOCKED` rather than `PASS`.
 
-Scope every tool to the changed files where the tool supports it. Whole-repo mode buries this diff's one new warning under two hundred old ones.
+The adapter lists only checks the repo already owns: type check, linter, formatter in check mode, schema and config parsers, dependency audit. Scope every tool to the changed files where the tool supports it. Whole-repo mode buries this diff's one new warning under two hundred old ones.
 
 Two checks earn their own attention because compilers miss them:
 
@@ -86,9 +86,9 @@ Two checks earn their own attention because compilers miss them:
 
 ## Gate 3 — Clean code
 
-Read the diff. Judge only the diff. Unrelated cleanups belong to a different task.
+Read `references/clean-code-gate.md` before you open the diff. It sets the reading order — one pass per question — and the severity bar that decides whether a finding blocks.
 
-Read `references/clean-code-gate.md` for the checklist and the severity bar.
+Judge only the diff. Unrelated cleanups belong to a different task.
 
 **Completion criterion:** one row per changed file in the findings table, with `none` written out where you found nothing. An empty table is ambiguous between "clean" and "not looked at".
 
@@ -138,9 +138,9 @@ Prefer the fixture the adapter already documents over a hand-built row. A synthe
 
 **One real account per role in scope.** When the change touches endpoints that several roles use, each role needs a real account of that role and a call to its own endpoints. Flipping the role claim on an existing token proves the guard refuses it — it proves nothing about whether that role's endpoints work. Read `references/scenario-design.md` for why this is the easiest gap to miss and still feel finished.
 
-A role with no account available is `BLOCKED` for that role, named in the report.
-
 Record what you created, so it can be cleaned up or reused.
+
+**Completion criterion:** every role in scope has either a real account of that role recorded, or a `BLOCKED` line naming the role and the account that would unblock it.
 
 ### 4d — Run the variants
 
@@ -158,7 +158,7 @@ Add `regression` when the work fixes a bug: the payload that reproduced it must 
 
 Source payloads in this order, stopping at the first that works: user-supplied case, saved fixture from an earlier run, a real row from the database with identifiers redacted, then synthesized. Say which you used. A synthesized payload proves less than a real one and the report must not blur that.
 
-Fire each variant through `scripts/call.sh` so the raw exchange lands in `receipts/04-scenario/<endpoint>.<variant>.txt`.
+Write one JSON file per endpoint into `<run>/scenarios/`, then run `scripts/run-scenarios.sh`. It fires every variant through `scripts/call.sh`, so each raw exchange lands in `receipts/04-scenario/<endpoint>.<variant>.txt` and the suite re-runs from the files instead of from memory. Use `scripts/call.sh` directly for a single ad-hoc call.
 
 **Completion criterion:** every endpoint in the phase 0 target list has one receipt per planned variant, and each receipt carries the request, the response status, the response body, and the assertion outcome. Copy results into the report verbatim. Paraphrasing a response is how a wrong field slips through.
 
